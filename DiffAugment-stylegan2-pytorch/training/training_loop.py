@@ -100,6 +100,7 @@ def training_loop(
     D_opt_kwargs            = {},       # Options for discriminator optimizer.
     augment_kwargs          = None,     # Options for augmentation pipeline. None = disable.
     loss_kwargs             = {},       # Options for loss function.
+    gradient_clipping       = None,     # Max global gradient norm for clippingor None to disable it
     metrics                 = [],       # Metrics to evaluate during training.
     comet_api_key           = '',       # comet_ml api key for comet.ml logging or '' to disable it
     comet_experiment_key    = '',       # comet_ml experiment key for comet.ml logging or '' to disable it
@@ -305,6 +306,11 @@ def training_loop(
                 for param in phase.module.parameters():
                     if param.grad is not None:
                         misc.nan_to_num(param.grad, nan=0, posinf=1e5, neginf=-1e5, out=param.grad)
+
+                # Clip gradients
+                if gradient_clipping is not None:
+                    torch.nn.utils.clip_grad_norm_(phase.module.parameters(), gradient_clipping)
+
                 phase.opt.step()
             if phase.end_event is not None:
                 phase.end_event.record(torch.cuda.current_stream(device))

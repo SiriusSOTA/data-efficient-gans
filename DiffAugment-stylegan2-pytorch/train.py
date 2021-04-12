@@ -41,6 +41,7 @@ def setup_training_loop_kwargs(
     metrics                 = None, # List of metric names: [], ['fid50k_full'] (default), ...
     comet_api_key           = None, # API key for Comet.ml: <str>, default = '' (don't use comet)
     comet_name              = None, # Experiment name for Comet.ml: <str>, default = '' (default Comet naming)
+    gradient_clipping       = None, # None or max global gradient L2 norm: <float>, default = None (no clipping)
     seed                    = None, # Random seed: <int>, default = 0
 
     # Train ataset.
@@ -50,7 +51,7 @@ def setup_training_loop_kwargs(
     mirror                  = None, # Augment dataset with x-flips: <bool>, default = False
 
     # ValidationDataset.
-    testdata       = None, # Validation dataset (optional): <path>
+    testdata                = None, # Validation dataset (optional): <path>
 
     # Base config.
     cfg                     = None, # Base config: 'auto' (default), 'stylegan2', 'paper256', 'paper512', 'paper1024', 'cifar'
@@ -79,9 +80,9 @@ def setup_training_loop_kwargs(
 ):
     args = dnnlib.EasyDict()
 
-    # ------------------------------------------
-    # General options: gpus, snap, metrics, seed
-    # ------------------------------------------
+    # -----------------------------------------------------------
+    # General options: gpus, snap, metrics, comet, clipping, seed
+    # -----------------------------------------------------------
 
     if gpus is None:
         gpus = 1
@@ -125,6 +126,8 @@ def setup_training_loop_kwargs(
     else:
         args.comet_api_key = ''
         args.comet_experiment_key = ''
+
+    args.gradient_clipping = gradient_clipping
 
     if seed is None:
         seed = 0
@@ -473,6 +476,7 @@ class CommaSeparatedList(click.ParamType):
 @click.option('--metrics', help='Comma-separated list or "none" [default: fid50k_full]', type=CommaSeparatedList())
 @click.option('--comet-api-key', help='Comet.ml API key (to log args and metrics)', type=str)
 @click.option('--comet-name', help='Set Comet.ml experiment name', type=str)
+@click.option('--gradient-clipping', help='Max global L2 norm for gradient clipping [default: None]', type=float)
 @click.option('--seed', help='Random seed [default: 0]', type=int, metavar='INT')
 @click.option('-n', '--dry-run', help='Print training options and exit', is_flag=True)
 
