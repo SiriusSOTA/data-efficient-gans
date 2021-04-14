@@ -256,18 +256,19 @@ def training_loop(
             import comet_ml
         except ImportError as err:
             comet_ml = None
-            print('Skippeing comet export: ', err)
+            print('Skipping comet_ml export:', err)
 
     # Train.
     if rank == 0:
         print(f'Training for {total_kimg} kimg...')
         print()
-        experiment = comet_ml.ExistingExperiment(
-            api_key=comet_api_key, previous_experiment=comet_experiment_key, auto_output_logging=False, auto_log_co2=False,
-            auto_metric_logging=False, auto_param_logging=False, display_summary_level=0
-        )
-    else:
-        experiment = None
+        if comet_ml is not None:
+            experiment = comet_ml.ExistingExperiment(
+                api_key=comet_api_key, previous_experiment=comet_experiment_key, auto_output_logging=False,
+                auto_log_co2=False, auto_metric_logging=False, auto_param_logging=False, display_summary_level=0
+            )
+        else:
+            experiment = None
     cur_nimg = 0
     cur_tick = 0
     tick_start_nimg = cur_nimg
@@ -376,12 +377,13 @@ def training_loop(
         # Log image and text to Comet.ml
         if rank == 0 and comet_api_key and comet_ml is not None:
             try:
-                if experiment is not None and (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
-                    experiment.log_image(image_data=os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'),
-                                         name=f'fakes{cur_nimg//1000:06d}', step=cur_nimg)
-                experiment.log_text(text=' '.join(fields_for_comet), step=cur_nimg)
+                if experiment is not None:
+                    if (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
+                        experiment.log_image(image_data=os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'),
+                                            name=f'fakes{cur_nimg//1000:06d}', step=cur_nimg)
+                    experiment.log_text(text=' '.join(fields_for_comet), step=cur_nimg)
             except Exception as err:
-                print('Failed to log image to comet', err)
+                print('Failed to log image to comet:', err)
 
         # Save network snapshot.
         snapshot_pkl = None
@@ -446,7 +448,7 @@ def training_loop(
                     if name.startswith('Loss/'):
                         experiment.log_metric(name, value.mean, step=cur_nimg)
             except Exception as err:
-                print('Failed to log metrics to comet', err)
+                print('Failed to log metrics to comet:', err)
 
         # Update state.
         cur_tick += 1
