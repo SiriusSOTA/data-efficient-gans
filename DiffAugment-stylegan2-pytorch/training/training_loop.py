@@ -441,7 +441,7 @@ def training_loop(
 
         if experiment is not None:
             try:
-                comet_ml.log_cpu_metrics(psutil.virtual_memory().total / 2**30, psutil.Process(os.getpid()).memory_info().rss / 2**30, step=cur_nimg)
+                comet_ml.log_ram_metrics(psutil.virtual_memory().total / 2**30, psutil.Process(os.getpid()).memory_info().rss / 2**30, step=cur_nimg)
                 comet_ml.log_metrics(stats_metrics, step=cur_nimg)
                 for name, value in stats_dict.items():
                     if name.startswith('Loss/'):
