@@ -380,8 +380,8 @@ def training_loop(
                     experiment.log_image(image_data=os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'),
                                          name=f'fakes{cur_nimg//1000:06d}', step=cur_nimg)
                 experiment.log_text(text=' '.join(fields_for_comet), step=cur_nimg)
-            except Exception:
-                print('Comet logging failed')
+            except Exception as err:
+                print('Failed to log image to comet', err)
 
         # Save network snapshot.
         snapshot_pkl = None
