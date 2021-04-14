@@ -14,10 +14,6 @@ import pickle
 import psutil
 import PIL.Image
 import numpy as np
-try:
-    import comet_ml
-except ImportError:
-    comet_ml = None
 import torch
 import dnnlib
 from torch_utils import misc
@@ -257,11 +253,23 @@ def training_loop(
             stats_tfevents = tensorboard.SummaryWriter(run_dir)
         except ImportError as err:
             print('Skipping tfevents export:', err)
+        try:
+            import comet_ml
+        except ImportError as err:
+            comet_ml = None
+            print('Skipping comet_ml export:', err)
 
     # Train.
     if rank == 0:
         print(f'Training for {total_kimg} kimg...')
         print()
+        if comet_ml is not None:
+            experiment = comet_ml.ExistingExperiment(
+                api_key=comet_api_key, previous_experiment=comet_experiment_key, auto_output_logging=False,
+                auto_log_co2=False, auto_metric_logging=False, auto_param_logging=False, display_summary_level=0
+            )
+        else:
+            experiment = None
     cur_nimg = 0
     cur_tick = 0
     tick_start_nimg = cur_nimg
@@ -375,17 +383,13 @@ def training_loop(
         # Log image and text to Comet.ml
         if rank == 0 and comet_api_key and comet_ml is not None:
             try:
-                experiment = comet_ml.ExistingExperiment(api_key=comet_api_key,
-                                                         previous_experiment=comet_experiment_key,
-                                                         auto_output_logging=False, auto_log_co2=False,
-                                                         auto_metric_logging=False, auto_param_logging=False,
-                                                         display_summary_level=0)
-                if (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
-                    experiment.log_image(image_data=os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'),
-                                         name=f'fakes{cur_nimg//1000:06d}', step=cur_nimg)
-                experiment.log_text(text=' '.join(fields_for_comet), step=cur_nimg)
-            except Exception:
-                print('Comet logging failed')
+                if experiment is not None:
+                    if (image_snapshot_ticks is not None) and (done or cur_tick % image_snapshot_ticks == 0):
+                        experiment.log_image(image_data=os.path.join(run_dir, f'fakes{cur_nimg//1000:06d}.png'),
+                                            name=f'fakes{cur_nimg//1000:06d}', step=cur_nimg)
+                    experiment.log_text(text=' '.join(fields_for_comet), step=cur_nimg)
+            except Exception as err:
+                print('Failed to log image to comet:', err)
 
         # Save network snapshot.
         snapshot_pkl = None
@@ -415,9 +419,7 @@ def training_loop(
                     train_dataset=training_set, validation_dataset=validation_set, loss_kwargs=loss_kwargs
                 )
                 if rank == 0:
-                    metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=snapshot_pkl,
-                                              comet_api_key=comet_api_key, comet_experiment_key=comet_experiment_key,
-                                              cur_nimg=cur_nimg)
+                    metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=snapshot_pkl, cur_nimg=cur_nimg)
                 stats_metrics.update(result_dict.results)
         del snapshot_data # conserve memory
 
@@ -447,6 +449,15 @@ def training_loop(
             stats_tfevents.flush()
         if progress_fn is not None:
             progress_fn(cur_nimg // 1000, total_kimg)
+
+        if experiment is not None:
+            try:
+                experiment.log_metrics(stats_metrics, step=cur_nimg)
+                for name, value in stats_dict.items():
+                    if name.startswith('Loss/'):
+                        experiment.log_metric(name, value.mean, step=cur_nimg)
+            except Exception as err:
+                print('Failed to log metrics to comet:', err)
 
         # Update state.
         cur_tick += 1
