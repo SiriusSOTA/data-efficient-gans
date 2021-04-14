@@ -441,11 +441,10 @@ def training_loop(
 
         if experiment is not None:
             try:
-                comet_ml.log_ram_metrics(psutil.virtual_memory().total / 2**30, psutil.Process(os.getpid()).memory_info().rss / 2**30, step=cur_nimg)
-                comet_ml.log_metrics(stats_metrics, step=cur_nimg)
+                experiment.log_metrics(stats_metrics, step=cur_nimg)
                 for name, value in stats_dict.items():
                     if name.startswith('Loss/'):
-                        comet_ml.log_metric(name, value, step=cur_nimg)
+                        experiment.log_metric(name, value.mean, step=cur_nimg)
             except Exception as err:
                 print('Failed to log metrics to comet', err)
 

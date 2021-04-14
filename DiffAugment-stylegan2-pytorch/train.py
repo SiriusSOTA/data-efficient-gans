@@ -118,8 +118,7 @@ def setup_training_loop_kwargs(
             args.comet_api_key = comet_api_key
             experiment = comet_ml.Experiment(api_key=comet_api_key, project_name='Sirius SOTA GANs',
                                              auto_output_logging='simple', auto_log_co2=False,
-                                             auto_metric_logging=False, auto_param_logging=False,
-                                             auto_weight_logging=False)
+                                             auto_metric_logging=False, auto_param_logging=False)
             experiment.set_name(comet_name)
             args.comet_experiment_key = experiment.get_key()
     else:
