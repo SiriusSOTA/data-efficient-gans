@@ -13,7 +13,7 @@ from . import metric_utils
 from tqdm.auto import tqdm
 from DiffAugment_pytorch import DiffAugment
 
-def compute_accuracy(opts, batch_size=32):
+def compute_accuracy(opts, batch_size=32, diff_aug=False):
     D = copy.deepcopy(opts.D).eval().requires_grad_(False).to(opts.device)
     train_dataset = opts.train_dataset
     train_dataloader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=batch_size)
@@ -24,6 +24,8 @@ def compute_accuracy(opts, batch_size=32):
     for i, (train_img, train_c) in enumerate(tqdm(train_dataloader)):
         train_img = train_img.to(opts.device).to(torch.float32) / 127.5 - 1
         train_c = train_c.to(opts.device)
+        if diff_aug and 'diffaugment' in opts.loss_kwargs:
+            train_img = DiffAugment(train_img, policy=opts.loss_kwargs.diffaugment)
         gen_logits = D(train_img, train_c)
         train_all += train_img.shape[0]
         train_correct += torch.sum(gen_logits > 0).detach().item()
@@ -40,6 +42,8 @@ def compute_accuracy(opts, batch_size=32):
         for i, (validation_img, validation_c) in enumerate(tqdm(validation_dataloader)):
             validation_img = validation_img.to(opts.device).to(torch.float32) / 127.5 - 1
             validation_c = validation_c.to(opts.device)
+            if diff_aug and 'diffaugment' in opts.loss_kwargs:
+                validation_img = DiffAugment(validation_img, policy=opts.loss_kwargs.diffaugment)
             gen_logits = D(validation_img, validation_c)
             validation_all += validation_img.shape[0]
             validation_correct += torch.sum(gen_logits > 0).detach().item()
