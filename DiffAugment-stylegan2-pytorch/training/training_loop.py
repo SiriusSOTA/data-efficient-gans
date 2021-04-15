@@ -245,6 +245,7 @@ def training_loop(
     stats_metrics = dict()
     stats_jsonl = None
     stats_tfevents = None
+    experiment = None
     if rank == 0:
         stats_jsonl = open(os.path.join(run_dir, 'stats.jsonl'), 'wt')
         try:
@@ -267,8 +268,7 @@ def training_loop(
                 api_key=comet_api_key, previous_experiment=comet_experiment_key, auto_output_logging=False,
                 auto_log_co2=False, auto_metric_logging=False, auto_param_logging=False, display_summary_level=0
             )
-        else:
-            experiment = None
+
     cur_nimg = 0
     cur_tick = 0
     tick_start_nimg = cur_nimg
