@@ -113,6 +113,15 @@ def accuracy_full(opts):
     return dict(accuracy_full_train=accuracy_train)
 
 @register_metric
+def accuracy_full_aug(opts):
+    opts.dataset_kwargs.update(max_size=None, xflip=False)
+    accuracy_train, accuracy_val = accuracy.compute_accuracy(opts, batch_size=32, diff_aug=True)
+    if accuracy_val is not None:
+        return dict(accuracy_full_train_aug=accuracy_train, accuracy_full_val_aug=accuracy_val)
+    return dict(accuracy_full_train_aug=accuracy_train)
+
+
+@register_metric
 def accuracy_generated(opts):
     opts.dataset_kwargs.update(max_size=None, xflip=False)
     accuracy_gen = accuracy.compute_accuracy_generated(opts, batch_size=32)
