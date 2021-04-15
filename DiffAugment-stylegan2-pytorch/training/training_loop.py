@@ -143,7 +143,8 @@ def training_loop(
 
     if validation_set_kwargs != {}:
         validation_set = dnnlib.util.construct_class_by_name(**validation_set_kwargs)
-        validation_set_iterator = iter(torch.utils.data.DataLoader(dataset=validation_set, batch_size=batch_size//num_gpus, **data_loader_kwargs))
+    else:
+        validation_set = None
     if rank == 0:
         print()
         print('Num images: ', len(training_set))
