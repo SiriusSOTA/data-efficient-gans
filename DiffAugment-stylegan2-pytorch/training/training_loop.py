@@ -247,6 +247,7 @@ def training_loop(
     stats_metrics = dict()
     stats_jsonl = None
     stats_tfevents = None
+    experiment = None
     if rank == 0:
         stats_jsonl = open(os.path.join(run_dir, 'stats.jsonl'), 'wt')
         try:
@@ -269,8 +270,7 @@ def training_loop(
                 api_key=comet_api_key, previous_experiment=comet_experiment_key, auto_output_logging=False,
                 auto_log_co2=False, auto_metric_logging=False, auto_param_logging=False, display_summary_level=0
             )
-        else:
-            experiment = None
+
     cur_nimg = 0
     cur_tick = 0
     tick_start_nimg = cur_nimg
@@ -422,6 +422,12 @@ def training_loop(
                 if rank == 0:
                     metric_main.report_metric(result_dict, run_dir=run_dir, snapshot_pkl=snapshot_pkl, cur_nimg=cur_nimg)
                 stats_metrics.update(result_dict.results)
+            # Log metrics to Comet
+            if experiment is not None and rank == 0:
+                try:
+                    experiment.log_metrics(stats_metrics, step=cur_nimg)
+                except Exception as err:
+                    print('Failed to log metrics to comet:', err)
         del snapshot_data # conserve memory
 
         # Collect statistics.
@@ -451,9 +457,9 @@ def training_loop(
         if progress_fn is not None:
             progress_fn(cur_nimg // 1000, total_kimg)
 
-        if experiment is not None:
+        # Log losses to Comet
+        if experiment is not None and rank == 0:
             try:
-                experiment.log_metrics(stats_metrics, step=cur_nimg)
                 for name, value in stats_dict.items():
                     if name.startswith('Loss/'):
                         experiment.log_metric(name, value.mean, step=cur_nimg)
